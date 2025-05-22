@@ -11,6 +11,7 @@ from langgraph.graph import StateGraph
 from langgraph.prebuilt import ToolNode
 
 from react_agent.configuration import Configuration
+from react_agent.human_in_the_loop import add_human_in_the_loop
 from react_agent.state import InputState, State
 from react_agent.tools import TOOLS
 from react_agent.utils import load_chat_model
@@ -69,10 +70,13 @@ builder = StateGraph(State, input=InputState, config_schema=Configuration)
 
 # Define the two nodes we will cycle between
 builder.add_node(call_model)
-builder.add_node("tools", ToolNode(TOOLS))
+
+# Wrap tools for HIL before creating the ToolNode
+# This example wraps all tools. You can selectively wrap tools if needed.
+hil_enabled_tools = [add_human_in_the_loop(tool) for tool in TOOLS]
+builder.add_node("tools", ToolNode(hil_enabled_tools))
 
 # Set the entrypoint as `call_model`
-# This means that this node is the first one called
 builder.add_edge("__start__", "call_model")
 
 
@@ -112,4 +116,5 @@ builder.add_conditional_edges(
 builder.add_edge("tools", "call_model")
 
 # Compile the builder into an executable graph
+# Removed checkpointer as LangGraph API handles persistence automatically
 graph = builder.compile(name="ReAct Agent")
